@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.vscode/
+.codesight/
+STRATEGY.md
+CLAUDE.md
+stress_metrics.py
+Technical.md
+TODO-scalability.md
+load_test.py
+ARCHITECTURE.md
+app_loadtest.log
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+bin/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local

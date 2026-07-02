@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<!-- LogLens — Author: Mandip Pandit (H504024), Honeywell -->
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LogLens</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f5f7fa;--surf:#fff;--surf2:#f0f2f6;--bdr:#dde2ea;--bdr2:#c5cdd8;
+  --txt:#374151;--dim:#9ca3af;--mut:#6b7280;--hi:#111827;
+  --ac:#1a6fa3;--ac-lt:#e8f2f9;--ac-bd:#b3d4ea;
+  --err:#b91c1c;--err-bg:#fef2f2;--err-bd:#fecaca;
+  --wrn:#b45309;--wrn-bg:#fffbeb;--wrn-bd:#fde68a;
+  --inf:#1d4ed8;--inf-bg:#eff6ff;--inf-bd:#bfdbfe;
+  --dbg:#4b5563;--dbg-bg:#f9fafb;--dbg-bd:#e5e7eb;
+  --trc:#9ca3af;--trc-bg:#f9fafb;--trc-bd:#e5e7eb;
+  --grn:#15803d;--grn-bg:#f0fdf4;--grn-bd:#bbf7d0;
+  --mono:'JetBrains Mono',monospace;--head:'Syne',sans-serif;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:0 4px 14px rgba(0,0,0,.09);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;}
+
+/* HEADER */
+header{background:var(--surf);border-bottom:1px solid var(--bdr);height:50px;display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;box-shadow:var(--sh);z-index:10;}
+.logo{font-family:var(--head);font-size:17px;font-weight:800;color:var(--hi);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.logo-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(145deg,var(--ac),#0d4a70);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;box-shadow:0 2px 8px rgba(26,111,163,.35);}
+.hsep{flex:1;}
+.hstat,.hclock{font-size:11px;color:var(--mut);background:var(--surf2);border:1px solid var(--bdr);padding:3px 10px;border-radius:6px;}
+.hstat{display:flex;align-items:center;gap:10px;padding:3px 12px;font-size:10.5px;flex-wrap:nowrap;white-space:nowrap;}
+.m-group{display:inline-flex;align-items:center;gap:5px;}
+.m-group::after{content:'│';color:var(--bdr2);margin-left:5px;}
+.m-group:last-child::after{content:none;}
+.m-lbl{color:var(--dim);font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px;}
+.hclock{letter-spacing:1px;}
+.sb-hdr-toggle{background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:16px;color:var(--mut);display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.sb-hdr-toggle:hover{color:var(--ac);border-color:var(--ac);background:var(--ac-lt);}
+
+/* LAYOUT */
+.wrap{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+aside{width:256px;background:var(--surf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0;transition:width .2s ease,min-width .2s ease;min-width:0;}
+aside.collapsed{width:0 !important;min-width:0 !important;overflow:hidden;border-right:none;padding:0;}
+aside.resizing{transition:none;user-select:none;}
+
+/* DRAG HANDLE + COLLAPSE TOGGLE */
+.sb-drag{width:5px;background:transparent;cursor:col-resize;flex-shrink:0;position:relative;z-index:5;transition:background .15s;}
+.sb-drag:hover,.sb-drag.active{background:var(--ac);opacity:.4;}
+.sb-drag.collapsed-handle{cursor:default;}
+.sb-toggle{position:absolute;top:50%;transform:translateY(-50%);left:-1px;width:18px;height:36px;background:var(--surf);border:1px solid var(--bdr);border-radius:0 6px 6px 0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--mut);z-index:6;box-shadow:var(--sh);transition:all .15s;}
+.sb-toggle:hover{color:var(--ac);background:var(--ac-lt);border-color:var(--ac-bd);}
+aside::-webkit-scrollbar{width:4px;}
+aside::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px;}
+.sb{padding:11px 13px 6px;}
+.sb-lbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;font-family:var(--head);}
+
+/* Service rows */
+.svc-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;transition:background .12s;margin-bottom:2px;border:1px solid transparent;}
+.svc-row:hover{background:var(--surf2);border-color:var(--bdr);}
+.svc-row input{display:none;}
+.pip{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid;transition:all .2s;}
+.svc-row input:checked+.pip{box-shadow:0 0 0 2px #fff,0 0 0 3.5px currentColor;}
+.svc-info{flex:1;min-width:0;}
+.svc-name{font-size:12px;color:var(--hi);font-family:var(--head);font-weight:700;}
+.svc-path{font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.svc-n{font-size:10px;color:var(--dim);background:var(--surf2);padding:1px 6px;border-radius:10px;min-width:24px;text-align:center;flex-shrink:0;}
+.svc-offline{font-size:10px;color:var(--dim);font-style:italic;padding:4px 8px;}
+
+.sdiv{border:none;border-top:1px solid var(--bdr);margin:8px 13px;}
+/* Collapsible section */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:9px 13px 6px;user-select:none;}
+.sec-hdr:hover .sb-lbl{color:var(--ac);}
+.sec-arrow{font-size:9px;color:var(--dim);transition:transform .2s;display:inline-block;}
+.sec-arrow.open{transform:rotate(90deg);}
+.sec-body{transition:max-height .25s ease;}
+.sec-body.collapsed{max-height:0 !important;overflow:hidden;}
+
+/* FILTER CHIPS AREA */
+.chip-area{padding:0 13px 8px;}
+.chip-list-wrap{display:flex;flex-wrap:wrap;gap:4px;}
+
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:10px;background:var(--ac-lt);border:1px solid var(--ac-bd);color:var(--ac);font-family:var(--mono);max-width:100%;}
+.chip-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;}
+.chip-x{cursor:pointer;font-weight:700;opacity:.7;flex-shrink:0;}
+.chip-x:hover{opacity:1;}
+
+/* Filter inputs */
+.fg{margin-bottom:7px;}
+.fl{font-size:9px;color:var(--mut);margin-bottom:3px;display:block;font-weight:700;}
+.fi,.fs{width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;color:var(--hi);font-size:11px;font-family:var(--mono);padding:5px 9px;outline:none;transition:border-color .15s,background .15s;}
+.fi:focus,.fs:focus{border-color:var(--ac);background:#fff;box-shadow:0 0 0 3px rgba(26,111,163,.1);}
+.fi::placeholder{color:var(--dim);}
+.fs option{background:#fff;}
+
+/* TIME PRESETS */
+.tprow{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.tp{font-size:10px;padding:3px 8px;border-radius:5px;background:var(--surf2);border:1px solid var(--bdr);color:var(--mut);cursor:pointer;font-family:var(--head);font-weight:700;transition:all .12s;}
+.tp:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-lt);}
+.tp.on{background:var(--ac);color:#fff;border-color:var(--ac);}
+
+/* BUTTONS */
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px;border-radius:7px;border:none;cursor:pointer;font-family:var(--head);font-size:12px;font-weight:700;transition:all .15s;margin-bottom:5px;}
+.bp{background:linear-gradient(135deg,var(--ac),#0d4a70);color:#fff;box-shadow:0 2px 8px rgba(26,111,163,.28);}
+.bp:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(26,111,163,.38);}
+.bd{background:transparent;color:var(--err);border:1px solid var(--bdr);}
+.bd:hover{background:var(--err-bg);border-color:var(--err-bd);}
+
+/* MAIN */
+main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* QUERY BAR */
+.qbar{background:var(--surf);border-bottom:1px solid var(--bdr);padding:9px 14px;flex-shrink:0;}
+.qrow{display:flex;gap:8px;align-items:center;}
+.qi{flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;color:var(--hi);font-size:12px;font-family:var(--mono);padding:7px 12px;outline:none;transition:border-color .15s,background .15s;}
+.qi:focus{border-color:var(--ac);background:#fff;box-shadow:0 0 0 3px rgba(26,111,163,.1);}
+.qi::placeholder{color:var(--dim);}
+.qbtn{background:linear-gradient(135deg,var(--ac),#0d4a70);color:#fff;border:none;border-radius:7px;padding:7px 18px;cursor:pointer;font-family:var(--head);font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(26,111,163,.25);transition:all .15s;white-space:nowrap;}
+.qbtn:hover{transform:translateY(-1px);}
+.qhints{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;}
+.qh{font-size:10px;color:var(--ac);background:var(--ac-lt);border:1px solid var(--ac-bd);padding:2px 8px;border-radius:10px;cursor:pointer;font-family:var(--mono);transition:all .12s;}
+.qh:hover{background:var(--ac);color:#fff;}
+
+/* TOOLBAR */
+.tbar{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surf2);border-bottom:1px solid var(--bdr);flex-shrink:0;flex-wrap:wrap;}
+.rc{font-size:11px;color:var(--mut);}
+.rc b{color:var(--ac);font-weight:700;}
+.tsep{flex:1;}
+.spinner{display:none;width:14px;height:14px;border:2px solid var(--bdr);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.tbctl{display:flex;align-items:center;gap:5px;}
+.tbctl label{font-size:10px;color:var(--dim);font-family:var(--head);font-weight:700;}
+.tbsel,.tbbtn{font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--bdr);background:var(--surf);color:var(--hi);font-family:var(--head);font-weight:700;outline:none;cursor:pointer;transition:all .12s;}
+.tbbtn{color:var(--ac);}
+.tbbtn:hover{background:var(--ac-lt);}
+.col-toggle-btn{font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid var(--bdr);background:var(--surf);color:var(--mut);cursor:pointer;font-family:var(--head);font-weight:700;transition:all .12s;}
+.col-toggle-btn:hover{border-color:var(--ac);color:var(--ac);}
+.st{font-size:10px;color:var(--dim);}
+
+/* COLUMN PICKER DROPDOWN */
+.col-picker{position:relative;display:inline-block;}
+.col-menu{display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:8px;box-shadow:var(--sh-md);z-index:50;min-width:180px;}
+.col-menu.open{display:block;}
+.col-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;color:var(--txt);}
+.col-item:hover{background:var(--surf2);}
+.col-item input{cursor:pointer;}
+
+/* RESULTS */
+.results{flex:1;overflow-y:auto;padding:8px 10px;background:var(--bg);}
+mark.hl{background:#fef08a;color:#713f12;border-radius:2px;padding:0 1px;font-style:normal;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px;}
+
+/* EMPTY STATE */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--dim);}
+.ei{font-size:44px;opacity:.18;}
+.et{font-size:14px;font-family:var(--head);font-weight:700;}
+.es{font-size:11px;text-align:center;line-height:1.8;}
+
+/* NO TRACE NOTICE */
+.notice{background:var(--wrn-bg);border:1px solid var(--wrn-bd);border-radius:7px;padding:10px 14px;margin-bottom:10px;font-size:11px;color:var(--wrn);line-height:1.8;}
+.notice code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;}
+
+/* VIRTUAL SCROLL */
+#vs-sentinel{position:relative;}
+#vs-content{position:absolute;left:0;right:0;}
+
+/* LOG ENTRY — table-like rows */
+.le{display:flex;flex-direction:column;padding:6px 10px;border-radius:7px;border:1px solid var(--bdr);border-left:3px solid transparent;margin-bottom:3px;background:var(--surf);transition:box-shadow .12s,border-color .12s;}
+.le:hover{box-shadow:var(--sh-md);border-color:var(--bdr2);}
+.le.expanded{box-shadow:var(--sh-md);border-color:var(--ac);}
+.le.E{border-left-color:var(--err);}
+.le.W{border-left-color:var(--wrn);}
+.le.I{border-left-color:var(--inf);}
+.le.D{border-left-color:var(--dbg);}
+.le.T{border-left-color:var(--trc);}
+
+/* Log row = inline fields */
+.le-row{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;user-select:text;}
+.le-toggle{flex-shrink:0;width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;font-size:10px;color:var(--dim);transition:all .12s;border:1px solid transparent;margin-top:1px;background:transparent;padding:0;outline:none;font-family:inherit;}
+.le-toggle:hover{color:var(--ac);background:var(--ac-lt);border-color:var(--ac-bd);}
+.le.expanded .le-toggle{color:var(--ac);}
+.le-ts{font-size:10px;color:var(--dim);white-space:nowrap;flex-shrink:0;padding-top:2px;min-width:138px;}
+.le-lv{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0;font-family:var(--head);letter-spacing:.5px;align-self:start;}
+.E .le-lv{color:var(--err);background:var(--err-bg);border:1px solid var(--err-bd);}
+.W .le-lv{color:var(--wrn);background:var(--wrn-bg);border:1px solid var(--wrn-bd);}
+.I .le-lv{color:var(--inf);background:var(--inf-bg);border:1px solid var(--inf-bd);}
+.D .le-lv{color:var(--dbg);background:var(--dbg-bg);border:1px solid var(--dbg-bd);}
+.T .le-lv{color:var(--trc);background:var(--trc-bg);border:1px solid var(--trc-bd);}
+
+.le-msg{flex:1;color:var(--hi);word-break:break-word;line-height:1.5;font-size:11.5px;}
+.E .le-msg{color:#991b1b;}.W .le-msg{color:#78350f;}
+
+/* Inline field values shown in row (controlled by column visibility) */
+.le-fields{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.ftag{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--surf2);border:1px solid var(--bdr);color:var(--mut);white-space:nowrap;}
+/* Clickable tags (traceId, spanId, userId etc.) */
+.ftag.click{cursor:pointer;transition:all .12s;}
+.ftag.click:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-lt);}
+.ftag.trace{color:var(--ac);border-color:var(--ac-bd);background:var(--ac-lt);font-weight:600;}
+.ftag.svc{color:#fff;font-weight:700;font-family:var(--head);}
+.ftag.notrace{color:var(--dim);border-style:dashed;font-style:italic;}
+
+/* EXPANDED DETAIL */
+.le-detail{display:none;margin-top:8px;border-top:1px solid var(--bdr);padding-top:8px;}
+.le.expanded .le-detail{display:block;}
+
+/* Full message block */
+.det-msg{font-size:11.5px;color:var(--hi);line-height:1.6;margin-bottom:8px;word-break:break-word;}
+.E .det-msg{color:#991b1b;}.W .det-msg{color:#78350f;}
+
+/* Stack trace */
+.stk{background:#1a1f2e;border:1px solid #2d3748;border-radius:6px;padding:12px;color:#f87171;font-size:10.5px;white-space:pre-wrap;overflow-x:auto;line-height:1.7;max-height:320px;overflow-y:auto;margin-bottom:8px;}
+
+/* Detail fields grid */
+.det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px 16px;}
+.det-row{display:flex;gap:8px;font-size:10px;line-height:1.9;}
+.det-k{color:var(--dim);font-weight:700;min-width:64px;flex-shrink:0;}
+.det-v{color:var(--hi);word-break:break-all;}
+.det-v.notset{color:var(--dim);font-style:italic;}
+.det-v.click{cursor:pointer;color:var(--ac);text-decoration:underline;text-underline-offset:2px;}
+.det-v.click:hover{opacity:.75;}
+
+/* MODE BAR (Live / Historical tabs) */
+.mode-bar{display:flex;gap:0;padding:0 14px;background:var(--surf);border-bottom:1px solid var(--bdr);flex-shrink:0;}
+.mode-btn{padding:8px 20px;font-size:12px;font-family:var(--head);font-weight:700;border:none;background:transparent;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.mode-btn:hover{color:var(--ac);}
+.mode-btn.mode-active{color:var(--ac);border-bottom-color:var(--ac);background:var(--ac-lt);}
+
+/* HISTORICAL BAR */
+.hist-bar{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--wrn-bg);border-bottom:1px solid var(--wrn-bd);flex-shrink:0;}
+</style>
+<script th:inline="javascript">
+/*<![CDATA[*/
+window._LOGLENS_SVCS = /*[[${services}]]*/ [];
+window._LOGLENS_BASE = /*[[@{/}]]*/ '/';
+window._LOGLENS_SHOW_METRICS = /*[[${showMetrics}]]*/ false;
+/*]]>*/
+</script>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-mark">⟨/⟩</div>LOGLENS</div>
+  <button class="sb-hdr-toggle" id="sbHdrToggle" onclick="SB.toggle()" title="Toggle sidebar (Ctrl+B)">☰</button>
+  <div class="hsep"></div>
+  <div class="hstat" id="metrics" style="display:none">
+    <span class="m-group"><span class="m-lbl">Server CPU</span> <span style="display:inline-block;width:60px;height:10px;background:#d1d5db;border-radius:5px;overflow:hidden;vertical-align:middle;border:1px solid #b0b7c3"><span id="mb-cpu" style="display:block;height:100%;width:0%;border-radius:5px;background-color:#16a34a;transition:width 4s cubic-bezier(.4,0,.2,1),background-color 4s cubic-bezier(.4,0,.2,1)"></span></span> <span id="mv-cpu" style="font-weight:700"></span></span>
+    <span class="m-group"><span class="m-lbl">Server RAM</span> <span style="display:inline-block;width:60px;height:10px;background:#d1d5db;border-radius:5px;overflow:hidden;vertical-align:middle;border:1px solid #b0b7c3"><span id="mb-ram" style="display:block;height:100%;width:0%;border-radius:5px;background-color:#16a34a;transition:width 4s cubic-bezier(.4,0,.2,1),background-color 4s cubic-bezier(.4,0,.2,1)"></span></span> <span id="mv-ram" style="font-weight:700"></span></span>
+    <span class="m-group"><span class="m-lbl">App CPU</span> <span id="mv-appcpu" style="font-weight:700"></span></span>
+    <span class="m-group"><span class="m-lbl">App Heap</span> <span style="display:inline-block;width:60px;height:10px;background:#d1d5db;border-radius:5px;overflow:hidden;vertical-align:middle;border:1px solid #b0b7c3"><span id="mb-heap" style="display:block;height:100%;width:0%;border-radius:5px;background-color:#16a34a;transition:width 4s cubic-bezier(.4,0,.2,1),background-color 4s cubic-bezier(.4,0,.2,1)"></span></span> <span id="mv-heap" style="font-weight:700"></span></span>
+    <span class="m-group"><span class="m-lbl">Threads</span> <span id="mv-thr"></span></span>
+    <span class="m-group"><span class="m-lbl">Searches</span> <span id="mv-req"></span></span>
+    <span class="m-group"><span class="m-lbl">Caches</span> <span id="mv-cache"></span></span>
+    <span class="m-group"><span class="m-lbl">GC</span> <span id="mv-gc"></span></span>
+    <span class="m-group"><span class="m-lbl">Uptime</span> <span id="mv-up"></span></span>
+  </div>
+  <div class="hclock" id="clk"></div><span id="clkLabel" style="font-size:9px;color:var(--dim);margin-left:4px"></span>
+</header>
+
+<div class="wrap">
+
+<!-- SIDEBAR -->
+<aside>
+  <!-- Services — collapsible -->
+  <div class="sec-hdr" onclick="toggleSec('secServices')" id="secServicesHdr">
+    <div class="sb-lbl" style="margin:0">Services</div>
+    <span class="sec-arrow open" id="secServicesArrow">▶</span>
+  </div>
+  <div class="sec-body" id="secServices" style="max-height:2000px;overflow:visible">
+  <div class="sb" style="padding-top:4px;">
+    <div id="svcList"><div class="svc-offline">Loading…</div></div>
+  </div>
+  </div><!-- /sec-body -->
+
+  <hr class="sdiv"/>
+
+  <!-- Active filter chips — always visible, scrollable -->
+  <div class="sb" style="padding-bottom:2px;">
+    <div class="sb-lbl">Active Filters <span id="chipCount" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ac)"></span></div>
+  </div>
+  <div class="chip-area" id="chipArea">
+    <span style="font-size:10px;color:var(--dim);font-style:italic" id="noChipMsg">Click any value in results to add a filter</span>
+    <div class="chip-list-wrap" id="chipList"></div>
+  </div>
+
+  <hr class="sdiv"/>
+
+  <!-- Structured inputs — collapsible -->
+  <div class="sec-hdr" onclick="toggleSec('secFilters')" id="secFiltersHdr">
+    <div class="sb-lbl" style="margin:0">Structured Filters</div>
+    <span class="sec-arrow" id="secFiltersArrow">▶</span>
+  </div>
+  <div class="sec-body collapsed" id="secFilters" style="max-height:0">
+  <div class="sb" style="padding-top:4px;">
+    <div class="fg">
+      <label class="fl">Level</label>
+      <select class="fs" id="fLevel">
+        <option value="">All levels</option>
+        <option value="ERROR">ERROR</option>
+        <option value="WARN">WARN</option>
+        <option value="INFO">INFO</option>
+        <option value="DEBUG">DEBUG</option>
+        <option value="TRACE">TRACE</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Service <span style="color:var(--dim);font-weight:400">(comma-separated)</span></label>
+      <input class="fi" id="fService" placeholder="e.g. routing, print"/>
+    </div>
+    <div class="fg">
+      <label class="fl">Trace ID <span style="color:var(--dim);font-weight:400">(comma-separated)</span></label>
+      <input class="fi" id="fTrace" placeholder="abc123, def456…"/>
+    </div>
+    <div class="fg">
+      <label class="fl">Span ID <span style="color:var(--dim);font-weight:400">(comma-separated)</span></label>
+      <input class="fi" id="fSpan" placeholder="xyz789, uvw000…"/>
+    </div>
+    <div class="fg"><label class="fl">User ID</label><input class="fi" id="fUser" placeholder="e.g. redsUser"/></div>
+    <div class="fg"><label class="fl">Site ID</label><input class="fi" id="fSite" placeholder="e.g. redsSite"/></div>
+    <div class="fg"><label class="fl">Tenant ID</label><input class="fi" id="fTenant" placeholder="e.g. redsOrg"/></div>
+    <div class="fg"><label class="fl">Logger / Class</label><input class="fi" id="fLogger" placeholder="e.g. REDSTransaction…"/></div>
+    <div class="fg"><label class="fl">Message keyword</label><input class="fi" id="fMsg" placeholder="e.g. misfired trigger"/></div>
+  </div>
+  </div><!-- /sec-body -->
+
+  <hr class="sdiv"/>
+
+  <!-- Time range — collapsible -->
+  <div class="sec-hdr" onclick="toggleSec('secTime')" id="secTimeHdr">
+    <div class="sb-lbl" style="margin:0">Time Range</div>
+    <span class="sec-arrow open" id="secTimeArrow">▶</span>
+  </div>
+  <div class="sec-body" id="secTime" style="max-height:2000px;overflow:visible">
+  <div class="sb">
+    <div class="sb-lbl">Time Range</div>
+    <div class="tprow">
+      <span class="tp" id="tp5"    onclick="setPreset(5)">5m</span>
+      <span class="tp" id="tp15"   onclick="setPreset(15)">15m</span>
+      <span class="tp" id="tp30"   onclick="setPreset(30)">30m</span>
+      <span class="tp" id="tp60"   onclick="setPreset(60)">1h</span>
+      <span class="tp" id="tp360"  onclick="setPreset(360)">6h</span>
+      <span class="tp" id="tp1440" onclick="setPreset(1440)">24h</span>
+      <span class="tp" id="tpC"    onclick="clearPreset()">Custom</span>
+    </div>
+    <div class="fg"><label class="fl">From</label><input class="fi" type="datetime-local" id="fFrom" onchange="clearActivePreset()"/></div>
+    <div class="fg"><label class="fl">To</label><input class="fi" type="datetime-local" id="fTo" onchange="clearActivePreset()"/></div>
+    <div style="font-size:9px;color:var(--dim);padding:2px 0 4px;line-height:1.6;">
+      ℹ Clock and timestamps use <strong>server time</strong> when synced, otherwise <strong>local time</strong> — enter From/To in the same time basis shown in the header.
+    </div>
+  </div>
+
+  </div><!-- /sec-body -->
+
+  <hr class="sdiv"/>
+
+  <!-- Tools — collapsible -->
+  <div class="sec-hdr" onclick="toggleSec('secTools')" id="secToolsHdr">
+    <div class="sb-lbl" style="margin:0">Tools</div>
+    <span class="sec-arrow" id="secToolsArrow">▶</span>
+  </div>
+  <div class="sec-body collapsed" id="secTools" style="max-height:0">
+  <div class="sb" style="padding-top:4px;">
+    <button class="btn bd" style="color:var(--ac);border-color:var(--ac-bd);font-size:11px;margin-bottom:4px" onclick="toolClearCache()">🗑 Clear Cache</button>
+    <button class="btn bd" style="color:var(--grn);border-color:var(--grn-bd);font-size:11px;margin-bottom:4px" onclick="toolHealth()">♥ Health Check</button>
+    <button class="btn bd" style="color:var(--inf);border-color:var(--inf-bd);font-size:11px;margin-bottom:4px" onclick="toolServices()">⊞ Services Info</button>
+    <pre id="toolOutput" style="display:none;font-size:10px;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;padding:8px;margin-top:6px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:var(--hi)"></pre>
+  </div>
+  </div><!-- /sec-body -->
+
+  <hr class="sdiv"/>
+  <div class="sb">
+    <button class="btn bp" onclick="runSearch()">⟳ &nbsp;Search</button>
+    <button class="btn bd" onclick="clearAll()">✕ &nbsp;Clear All</button>
+  </div>
+</aside>
+
+<!-- DRAG HANDLE -->
+<div class="sb-drag" id="sbDrag">
+  <div class="sb-toggle" id="sbToggle" title="Toggle sidebar">◀</div>
+</div>
+
+<!-- MAIN -->
+<main>
+  <!-- MODE TOGGLE -->
+  <div class="mode-bar" id="modeBar">
+    <button class="mode-btn mode-active" id="modeLive" onclick="switchMode('live')">Live Logs</button>
+    <button class="mode-btn" id="modeHist" onclick="switchMode('hist')">Historical Logs</button>
+  </div>
+
+  <!-- HISTORICAL FILE SELECTOR (hidden by default) -->
+  <div class="hist-bar" id="histBar" style="display:none">
+    <div class="tbctl">
+      <label>Component</label>
+      <select class="tbsel" id="histSvc" onchange="onHistSvcChange()">
+        <option value="">Select component…</option>
+      </select>
+    </div>
+    <div class="tbctl">
+      <label>File</label>
+      <select class="tbsel" id="histFile" onchange="onHistFileChange()" style="min-width:220px">
+        <option value="">Select file…</option>
+      </select>
+    </div>
+    <span id="histFileInfo" style="font-size:10px;color:var(--dim)"></span>
+  </div>
+
+  <!-- QUERY BAR -->
+  <div class="qbar">
+    <div class="qrow">
+      <input class="qi" id="qi"
+             placeholder='Free-form: level:ERROR AND userId:U001  |  logger:REDSTransactionManager  |  "misfired trigger"  |  traceId:abc NOT level:DEBUG'
+             onkeydown="if(event.key==='Enter')runSearch()"/>
+      <button class="qbtn" onclick="runSearch()">Search</button>
+    </div>
+    <div class="qhints">
+      <span class="qh" onclick="sq('level:ERROR')">level:ERROR</span>
+      <span class="qh" onclick="sq('level:ERROR OR level:WARN')">ERROR OR WARN</span>
+      <span class="qh" onclick="sq('level:ERROR NOT message:timeout')">ERROR NOT timeout</span>
+      <span class="qh" onclick="sq('logger:REDSTransactionManager')">logger:class</span>
+      <span class="qh" onclick="sq('message:&quot;misfired trigger&quot;')">phrase search</span>
+      <span class="qh" onclick="sq('(level:ERROR OR level:WARN) AND service:routing')">routing errors</span>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="tbar">
+    <div class="rc" id="rc">No results yet</div>
+    <div class="spinner" id="spin"></div>
+    <div class="tsep"></div>
+    <!-- Sort -->
+    <div class="tbctl">
+      <label>Sort</label>
+      <button class="tbbtn" id="sortBtn" onclick="toggleSort()" title="Toggle newest/oldest first">↓ DESC</button>
+    </div>
+    <!-- Limit -->
+    <div class="tbctl">
+      <label>Limit</label>
+      <select class="tbsel" id="limitSel">
+        <option value="200">200</option>
+        <option value="500" selected>500</option>
+        <option value="1000">1000</option>
+        <option value="2000">2000</option>
+        <option value="5000">5000</option>
+        <option value="0">All</option>
+      </select>
+    </div>
+    <!-- Scan Depth -->
+    <div class="tbctl">
+      <label>Scan Depth</label>
+      <select class="tbsel" id="scanSel">
+        <option value="100000" selected>100K</option>
+        <option value="500000">500K</option>
+        <option value="1000000">1M</option>
+        <option value="2000000">2M</option>
+        <option value="5000000">5M</option>
+        <option value="10000000">10M</option>
+      </select>
+    </div>
+    <!-- Column picker -->
+    <div class="col-picker">
+      <button class="col-toggle-btn" onclick="toggleColMenu()">⊞ Columns</button>
+      <div class="col-menu" id="colMenu">
+        <div style="font-size:9px;font-weight:700;color:var(--dim);letter-spacing:1px;margin-bottom:6px;font-family:var(--head)">VISIBLE COLUMNS</div>
+        <label class="col-item"><input type="checkbox" data-col="timestamp" checked onchange="rerender()"/> Timestamp</label>
+        <label class="col-item"><input type="checkbox" data-col="level"     checked onchange="rerender()"/> Level</label>
+        <label class="col-item"><input type="checkbox" data-col="message"   checked onchange="rerender()"/> Message</label>
+        <label class="col-item"><input type="checkbox" data-col="service"   checked onchange="rerender()"/> Service</label>
+        <label class="col-item"><input type="checkbox" data-col="logger"    checked onchange="rerender()"/> Logger</label>
+        <label class="col-item"><input type="checkbox" data-col="traceId"   checked onchange="rerender()"/> TraceId</label>
+        <label class="col-item"><input type="checkbox" data-col="spanId"          onchange="rerender()"/> SpanId</label>
+        <label class="col-item"><input type="checkbox" data-col="userId"    checked onchange="rerender()"/> UserId</label>
+        <label class="col-item"><input type="checkbox" data-col="siteId"          onchange="rerender()"/> SiteId</label>
+        <label class="col-item"><input type="checkbox" data-col="tenantId"        onchange="rerender()"/> TenantId</label>
+        <label class="col-item"><input type="checkbox" data-col="thread"          onchange="rerender()"/> Thread</label>
+      </div>
+    </div>
+    <!-- Export -->
+    <div class="tbctl" id="dlCtl" style="display:none">
+      <label>Export</label>
+      <select class="tbsel" id="dlFmt">
+        <option value="txt">TXT</option>
+        <option value="csv">CSV</option>
+      </select>
+      <button class="tbbtn" onclick="downloadLogs()" title="Download all filtered logs">&#x2913; Download</button>
+    </div>
+    <div class="st" id="st"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+    <div class="empty">
+      <div class="ei">⟨/⟩</div>
+      <div class="et">LogLens</div>
+      <div class="es">Use the filters on the left or the query bar above<br/>Click any value in results to add it as a filter</div>
+    </div>
+  </div>
+  <!-- LOAD MORE -->
+  <div style="display:flex;justify-content:center;padding:12px 0;flex-shrink:0;background:var(--bg);border-top:1px solid var(--bdr);">
+    <button id="loadMoreBtn" onclick="loadMore()"
+      style="display:none;background:var(--ac);color:#fff;border:none;border-radius:8px;padding:8px 28px;font-size:12px;font-family:var(--mono);cursor:pointer;font-weight:600;letter-spacing:.5px;box-shadow:0 2px 8px rgba(26,111,163,.25);">
+      ↓ Load More
+    </button>
+  </div>
+</main>
+</div>
+
+<script th:inline="none">
+// ── Config from Spring ─────────────────────────────────────────
+const ALL_SVCS = window._LOGLENS_SVCS || [];
+const BASE     = (window._LOGLENS_BASE || '/').replace(/\/+$/, '');
+const SVC_COL  = {};
+ALL_SVCS.forEach(s => { SVC_COL[s.name] = s.color || '#1a6fa3'; });
+
+// ── State ──────────────────────────────────────────────────────
+let currentSort    = 'desc';
+let lastEntries    = [];
+let activePreset   = null;
+let chips          = [];
+
+// ── Mode state isolation ─────────────────────────────────────
+let currentMode = 'live';
+const modeState = {
+  live: { entries: [], searchId: null, nextOffsets: null, hasMore: false, chips: [],
+          sort: 'desc', preset: null, filterValues: {} },
+  hist: { entries: [], searchId: null, nextOffsets: null, hasMore: false, chips: [],
+          sort: 'desc', preset: null, filterValues: {},
+          selectedSvc: '', selectedFile: '' }
+};
+
+// ── Virtual Scroll ────────────────────────────────────────────
+const VS = {
+  // Configuration
+  DEFAULT_ROW_H: 58,
+  BUFFER: 20,
+  SCROLL_TRIGGER: 300,
+  EXPANDED_EST: 260,
+
+  // State
+  entries: [],
+  positions: null,
+  expandedSet: new Set(),
+  expandedHeights: new Map(),
+  visFrom: -1,
+  visTo: -1,
+  rafPending: false,
+  forceRender: false,
+  loadingMore: false,
+  cols: null,
+  hlTerms: null,
+
+  // DOM refs
+  container: null,
+  sentinel: null,
+  content: null,
+  noticeEl: null,
+
+  init() {
+    this.container = document.getElementById('results');
+    // Scroll handler
+    this.container.addEventListener('scroll', () => this.onScroll(), {passive: true});
+  },
+
+  _ensureDom() {
+    if (!this.sentinel) {
+      this.noticeEl = document.createElement('div');
+      this.noticeEl.id = 'vs-notice';
+      this.sentinel = document.createElement('div');
+      this.sentinel.id = 'vs-sentinel';
+      this.content = document.createElement('div');
+      this.content.id = 'vs-content';
+      this.sentinel.appendChild(this.content);
+      this.container.innerHTML = '';
+      this.container.appendChild(this.noticeEl);
+      this.container.appendChild(this.sentinel);
+    }
+  },
+
+  measureDefaultRowHeight() {
+    this._ensureDom();
+    const tmp = document.createElement('div');
+    tmp.style.cssText = 'position:absolute;visibility:hidden;left:-9999px;width:' + this.container.clientWidth + 'px;';
+    this.container.appendChild(tmp);
+    const sample = {level:'INFO',service:'x',message:'Sample log message for measurement',timestamp:'2026-01-01T00:00:00'};
+    tmp.innerHTML = entryHtml(sample, visibleCols(), [], 0);
+    const h = tmp.firstElementChild ? tmp.firstElementChild.offsetHeight : 58;
+    this.container.removeChild(tmp);
+    this.DEFAULT_ROW_H = Math.max(h + 3, 40); // +3 for margin-bottom
+  },
+
+  setNotice(noTrace) {
+    this._ensureDom();
+    if (noTrace) {
+      this.noticeEl.innerHTML = '<div class="notice">\u2139\uFE0F <strong>traceId not found in logs.</strong> Add <code>micrometer-tracing-bridge-brave</code> to each service\u2019s <code>build.gradle</code> and set <code>management.tracing.sampling.probability: 1.0</code> in <code>application.yml</code> \u2014 traceId/spanId will auto-populate with zero code changes.</div>';
+    } else {
+      this.noticeEl.innerHTML = '';
+    }
+  },
+
+  setEntries(entries) {
+    this.entries = entries;
+    this.expandedSet.clear();
+    this.expandedHeights.clear();
+    this.visFrom = -1;
+    this.visTo = -1;
+    this.cols = visibleCols();
+    this.hlTerms = getHighlightTerms();
+    this._ensureDom();
+    this.measureDefaultRowHeight();
+    this.rebuildPositions();
+    this.container.scrollTop = 0;
+    this.forceRender = true;
+    this.render();
+  },
+
+  appendEntries(allEntries) {
+    this.entries = allEntries;
+    this.cols = visibleCols();
+    this.hlTerms = getHighlightTerms();
+    this.rebuildPositions();
+    this.sentinel.style.height = this.positions[this.entries.length] + 'px';
+    this.forceRender = true;
+    this.render();
+  },
+
+  clear() {
+    this.entries = [];
+    this.positions = null;
+    this.expandedSet.clear();
+    this.expandedHeights.clear();
+    this.visFrom = -1;
+    this.visTo = -1;
+    this.cols = null;
+    this.hlTerms = null;
+    if (this.sentinel) {
+      this.container.innerHTML = '';
+      this.sentinel = null;
+      this.content = null;
+      this.noticeEl = null;
+    }
+  },
+
+  rebuildPositions() {
+    const n = this.entries.length;
+    this.positions = new Float64Array(n + 1);
+    let top = 0;
+    for (let i = 0; i < n; i++) {
+      this.positions[i] = top;
+      top += this.expandedSet.has(i)
+        ? (this.expandedHeights.get(i) || this.DEFAULT_ROW_H + this.EXPANDED_EST)
+        : this.DEFAULT_ROW_H;
+    }
+    this.positions[n] = top;
+  },
+
+  bsearch(targetTop) {
+    let lo = 0, hi = this.entries.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (this.positions[mid + 1] <= targetTop) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  },
+
+  findVisibleRange() {
+    const scrollTop = this.container.scrollTop;
+    const viewH = this.container.clientHeight;
+    const noticeH = this.noticeEl ? this.noticeEl.offsetHeight : 0;
+    const adjTop = Math.max(0, scrollTop - noticeH);
+
+    const first = this.bsearch(adjTop);
+    const last = this.bsearch(adjTop + viewH);
+
+    const from = Math.max(0, first - this.BUFFER);
+    const to = Math.min(this.entries.length, last + 1 + this.BUFFER);
+    return {from, to};
+  },
+
+  render() {
+    if (!this.entries.length) return;
+    const {from, to} = this.findVisibleRange();
+
+    if (from === this.visFrom && to === this.visTo && !this.forceRender) return;
+    this.visFrom = from;
+    this.visTo = to;
+    this.forceRender = false;
+
+    this.sentinel.style.height = this.positions[this.entries.length] + 'px';
+    this.content.style.top = this.positions[from] + 'px';
+
+    const c = this.cols || visibleCols();
+    const h = this.hlTerms || getHighlightTerms();
+    const html = [];
+    for (let i = from; i < to; i++) {
+      html.push(entryHtml(this.entries[i], c, h, i));
+    }
+    this.content.innerHTML = html.join('');
+
+    // Measure any expanded entries in this batch
+    this._measureVisible(from, to);
+  },
+
+  _measureVisible(from, to) {
+    let changed = false;
+    for (let i = from; i < to; i++) {
+      if (this.expandedSet.has(i)) {
+        const el = this.content.querySelector('[data-vidx="' + i + '"]');
+        if (el) {
+          const h = el.offsetHeight;
+          if (h > 0 && h !== this.expandedHeights.get(i)) {
+            this.expandedHeights.set(i, h + 3); // +3 margin
+            changed = true;
+          }
+        }
+      }
+    }
+    if (changed) {
+      this.rebuildPositions();
+      this.sentinel.style.height = this.positions[this.entries.length] + 'px';
+    }
+  },
+
+  toggle(idx) {
+    const oldTotal = this.positions ? this.positions[this.entries.length] : 0;
+
+    if (this.expandedSet.has(idx)) {
+      this.expandedSet.delete(idx);
+      this.expandedHeights.delete(idx);
+    } else {
+      this.expandedSet.add(idx);
+    }
+
+    this.rebuildPositions();
+
+    // Adjust scroll if toggled entry is above viewport
+    if (idx < this.visFrom) {
+      const delta = this.positions[this.entries.length] - oldTotal;
+      if (delta !== 0) this.container.scrollTop += delta;
+    }
+
+    this.forceRender = true;
+    this.render();
+
+    // After DOM update, measure actual expanded height
+    if (this.expandedSet.has(idx)) {
+      requestAnimationFrame(() => {
+        const el = this.content.querySelector('[data-vidx="' + idx + '"]');
+        if (el) {
+          const measured = el.offsetHeight + 3;
+          const old = this.expandedHeights.get(idx);
+          if (measured > 0 && measured !== old) {
+            this.expandedHeights.set(idx, measured);
+            this.rebuildPositions();
+            this.sentinel.style.height = this.positions[this.entries.length] + 'px';
+            this.forceRender = true;
+            this.render();
+          }
+        }
+      });
+    }
+  },
+
+  onScroll() {
+    if (!this.rafPending) {
+      this.rafPending = true;
+      requestAnimationFrame(() => {
+        this.rafPending = false;
+        this.render();
+        this.checkInfiniteScroll();
+      });
+    }
+  },
+
+  checkInfiniteScroll() {
+    if (!lastSearchId || this.loadingMore) return;
+    // Only load more if the Load More button is visible (i.e., there are more pages)
+    const lmBtn = document.getElementById('loadMoreBtn');
+    if (!lmBtn || lmBtn.style.display === 'none') return;
+    const totalH = this.sentinel ? this.sentinel.offsetHeight : 0;
+    const scrollBottom = this.container.scrollTop + this.container.clientHeight;
+    if (totalH - scrollBottom < this.SCROLL_TRIGGER) {
+      this.loadingMore = true;
+      loadMore().finally(() => { this.loadingMore = false; });
+    }
+  }
+};
+
+// serverDeltaMs = serverTime - browserTime in milliseconds.
+// Applied whenever we compute a "now" for time presets, so the
+// from/to values we send always match the server's clock.
+// Example: server is UTC (12:00), browser is IST (17:30) → delta = -19800000ms
+// setPreset(5) → browserNow = 17:30, serverNow = 17:30 + delta = 12:00 ✓
+let serverDeltaMs  = 0;
+let serverTimeReady = false;
+
+// ── Clock (shows server time once synced, browser time initially) ────
+function clockText() {
+  const d = serverTimeReady ? serverNow() : new Date();
+  return d.toLocaleTimeString('en-GB',{hour12:false});
+}
+setInterval(()=>{ document.getElementById('clk').textContent = clockText(); }, 1000);
+document.getElementById('clk').textContent = clockText();
+
+async function syncServerTime() {
+  try {
+    const t0  = Date.now();
+    const res = await fetch(BASE + '/api/logs/servertime');
+    const rtt = Date.now() - t0;              // round-trip time
+    const { serverTime } = await res.json();  // "2026-03-07T12:00:00"
+    // Parse server time as if it were local (it's already server-local)
+    const serverMs = new Date(serverTime.replace('T', ' ')).getTime();
+    if (isNaN(serverMs)) { console.warn('Unparseable serverTime:', serverTime); return; }
+    // Compensate for ~half the round-trip (request travel time)
+    serverDeltaMs   = serverMs - (Date.now() - rtt / 2);
+    serverTimeReady = true;
+    // Update clock label and tooltip
+    // Format delta as human-readable (e.g., "-5h 30m", "+2m", "in sync")
+    const totalSec = Math.round(serverDeltaMs / 1000);
+    const sign = totalSec >= 0 ? '+' : '-';
+    const absSec = Math.abs(totalSec);
+    const h = Math.floor(absSec / 3600);
+    const m = Math.floor((absSec % 3600) / 60);
+    let diffStr;
+    if (absSec < 2) {
+      diffStr = 'in sync';
+    } else if (h > 0 && m > 0) {
+      diffStr = `${sign}${h}h ${m}m`;
+    } else if (h > 0) {
+      diffStr = `${sign}${h}h`;
+    } else if (m > 0) {
+      diffStr = `${sign}${m}m`;
+    } else {
+      diffStr = `${sign}${absSec}s`;
+    }
+    const lbl = document.getElementById('clkLabel');
+    if (lbl) lbl.textContent = `(server ${diffStr})`;
+    document.getElementById('clk').title = `Clock shows server time (delta: ${diffStr}).\nTime presets and manual From/To are in server time.`;
+  } catch(e) {
+    console.warn('Could not sync server time — time presets use browser time', e);
+    const lbl = document.getElementById('clkLabel');
+    if (lbl) lbl.textContent = '(local)';
+  }
+}
+
+// Returns "now" in server's local time as a Date object
+function serverNow() { return new Date(Date.now() + serverDeltaMs); }
+
+// ── Live Metrics Bar (polls every 4s when enabled) ──────────────
+const SHOW_METRICS = window._LOGLENS_SHOW_METRICS || false;
+if (SHOW_METRICS) {
+  const metricsEl = document.getElementById('metrics');
+  if (metricsEl) metricsEl.style.display = '';
+  function fmtMem(mb) { return mb >= 1024 ? (mb/1024).toFixed(1)+' GB' : mb+' MB'; }
+  function pct(used,total) { return total > 0 ? Math.round(used/total*100) : 0; }
+  function barColor(p) {
+    if (p <= 30) return '#16a34a';       // green
+    if (p <= 50) return '#65a30d';       // lime
+    if (p <= 65) return '#ca8a04';       // yellow
+    if (p <= 80) return '#ea580c';       // orange
+    if (p <= 90) return '#dc2626';       // red
+    return '#991b1b';                    // deep red
+  }
+  function fmtUptime(s) {
+    const parts = s.match(/(\d+)d\s*(\d+)h\s*(\d+)m/);
+    if (!parts) return s;
+    const d=+parts[1], h=+parts[2], m=+parts[3];
+    if (d > 0) return d+'d '+h+'h';
+    if (h > 0) return h+'h '+m+'m';
+    return m+'m';
+  }
+  // Pre-cached DOM refs — fill spans inside inline-styled bar containers
+  const mbCpu  = document.getElementById('mb-cpu');
+  const mbRam  = document.getElementById('mb-ram');
+  const mbHeap = document.getElementById('mb-heap');
+  const mvCpu  = document.getElementById('mv-cpu');
+  const mvRam  = document.getElementById('mv-ram');
+  const mvAcpu = document.getElementById('mv-appcpu');
+  const mvHeap = document.getElementById('mv-heap');
+  const mvThr  = document.getElementById('mv-thr');
+  const mvReq  = document.getElementById('mv-req');
+  const mvCch  = document.getElementById('mv-cache');
+  const mvGc   = document.getElementById('mv-gc');
+  const mvUp   = document.getElementById('mv-up');
+
+  function updateBar(barEl, valEl, p, text) {
+    const w = p > 0 ? Math.max(p, 3) : 0;
+    const c = barColor(p);
+    barEl.style.width = Math.min(w, 100) + '%';
+    barEl.style.backgroundColor = c;
+    valEl.style.color = c;
+    valEl.textContent = text;
+  }
+
+  async function pollMetrics() {
+    try {
+      const res = await fetch(BASE + '/api/logs/metrics');
+      if (!res.ok) throw new Error(res.status);
+      const d = await res.json();
+      const cpuP  = Math.round(d.cpuSystem);
+      const heapP = pct(d.heapUsedMB, d.heapMaxMB);
+      const ramP  = pct(d.memUsedMB, d.memTotalMB);
+
+      updateBar(mbCpu,  mvCpu,  cpuP,  d.cpuSystem + '%');
+      updateBar(mbRam,  mvRam,  ramP,  fmtMem(d.memUsedMB) + ' / ' + fmtMem(d.memTotalMB));
+      updateBar(mbHeap, mvHeap, heapP, fmtMem(d.heapUsedMB) + ' / ' + fmtMem(d.heapMaxMB));
+
+      const acpuP = Math.round(d.cpuProcess);
+      mvAcpu.textContent = d.cpuProcess + '%';
+      mvAcpu.style.color = barColor(acpuP);
+
+      mvThr.textContent  = d.threadCount;
+      mvReq.textContent  = d.reqCount;
+      mvCch.textContent  = d.cacheSize;
+      mvGc.textContent   = d.gcCount + ' (' + d.gcTimeMs + ' ms)';
+      mvUp.textContent   = fmtUptime(d.uptime);
+    } catch(e) {
+      const dash = '--';
+      if (mvCpu)  { mvCpu.textContent = dash; mvCpu.style.color = ''; }
+      if (mvRam)  { mvRam.textContent = dash; mvRam.style.color = ''; }
+      if (mvAcpu) { mvAcpu.textContent = dash; mvAcpu.style.color = ''; }
+      if (mvHeap) { mvHeap.textContent = dash; mvHeap.style.color = ''; }
+      if (mvThr)  mvThr.textContent = dash;
+      if (mvReq)  mvReq.textContent = dash;
+      if (mvCch)  mvCch.textContent = dash;
+      if (mvGc)   mvGc.textContent = dash;
+      if (mvUp)   mvUp.textContent = dash;
+      if (mbCpu)  mbCpu.style.width = '0%';
+      if (mbRam)  mbRam.style.width = '0%';
+      if (mbHeap) mbHeap.style.width = '0%';
+    }
+  }
+  pollMetrics();
+  setInterval(pollMetrics, 4000);
+}
+
+// ── Load services (only online ones shown) ─────────────────────
+async function loadSvcs() {
+  try {
+    const res  = await fetch(BASE + '/api/logs/services');
+    const svcs = await res.json();
+    const on   = svcs.filter(s => s.exists);
+    const el   = document.getElementById('svcList');
+    if (!on.length) {
+      el.innerHTML = `<div class="svc-offline">No log files found.<br/>Check paths in application.yml</div>`;
+    } else {
+      el.innerHTML = on.map(s => `
+        <label class="svc-row">
+          <input type="checkbox" class="svc-cb" value="${esc(s.name)}" checked/>
+          <div class="pip" style="color:${esc(s.color)};border-color:${esc(s.color)};background:${esc(s.color)}"></div>
+          <div class="svc-info">
+            <div class="svc-name">${esc(s.name)}</div>
+            <div class="svc-path">${esc(s.logFile)}</div>
+          </div>
+          <div class="svc-n" id="cn-${esc(s.name)}">—</div>
+        </label>`).join('')
+        ;
+    }
+
+  } catch(e) {
+    document.getElementById('svcList').innerHTML = '<div class="svc-offline">Error loading services</div>';
+  }
+}
+
+// ── Time presets ───────────────────────────────────────────────
+function setPreset(mins) {
+  // Toggle: clicking the already-active preset deactivates it
+  if (activePreset === mins) {
+    clearActivePreset();
+    document.getElementById('fFrom').value = '';
+    document.getElementById('fTo').value   = '';
+    runSearch();
+    return;
+  }
+  clearActivePreset();
+  activePreset = mins;
+  const btn = document.getElementById('tp' + mins);
+  if (btn) btn.classList.add('on');
+  // Use serverNow() so the window aligns with the server's clock,
+  // not the browser's local time — this is the timezone fix.
+  const now  = serverNow();
+  const from = new Date(now.getTime() - mins * 60000);
+  document.getElementById('fFrom').value = localISO(from);
+  document.getElementById('fTo').value   = localISO(now);
+  runSearch();
+}
+function clearPreset() {
+  clearActivePreset();
+  document.getElementById('fFrom').value = '';
+  document.getElementById('fTo').value   = '';
+  runSearch();
+}
+function clearActivePreset() {
+  if (activePreset !== null) {
+    const btn = document.getElementById('tp' + activePreset);
+    if (btn) btn.classList.remove('on');
+    activePreset = null;
+  }
+}
+// Returns "YYYY-MM-DDTHH:mm" — the only format datetime-local accepts
+function localISO(d) {
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// ── Sort toggle ────────────────────────────────────────────────
+function toggleSort() {
+  currentSort = currentSort === 'desc' ? 'asc' : 'desc';
+  const btn = document.getElementById('sortBtn');
+  btn.textContent  = currentSort === 'asc' ? '↑ ASC' : '↓ DESC';
+  btn.style.color  = currentSort === 'asc' ? 'var(--wrn)' : 'var(--ac)';
+  runSearch();
+}
+
+// ── Column picker ──────────────────────────────────────────────
+function toggleColMenu() {
+  document.getElementById('colMenu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.col-picker')) document.getElementById('colMenu').classList.remove('open');
+});
+function visibleCols() {
+  const cols = {};
+  document.querySelectorAll('[data-col]').forEach(cb => { cols[cb.dataset.col] = cb.checked; });
+  return cols;
+}
+function rerender() {
+  VS.cols = visibleCols();
+  VS.hlTerms = getHighlightTerms();
+  VS.measureDefaultRowHeight();
+  VS.rebuildPositions();
+  VS.forceRender = true;
+  VS.render();
+}
+
+// ── Collapsible sections ───────────────────────────────────────
+function toggleSec(id) {
+  var body  = document.getElementById(id);
+  var arrow = document.getElementById(id + 'Arrow');
+  var open  = !body.classList.contains('collapsed');
+  if (open) {
+    // Collapse: freeze height then animate to 0
+    body.style.maxHeight = body.scrollHeight + 'px';
+    body.style.overflow  = 'hidden';
+    requestAnimationFrame(function() {
+      body.classList.add('collapsed');
+      body.style.maxHeight = '0';
+    });
+    arrow.classList.remove('open');
+  } else {
+    // Expand: remove overflow restriction, set large max-height so nothing is clipped
+    body.classList.remove('collapsed');
+    body.style.overflow  = 'visible';
+    body.style.maxHeight = '2000px';
+    arrow.classList.add('open');
+  }
+}
+
+// ── Keyword highlight ──────────────────────────────────────────
+// Collects terms to highlight from: free-form query bar + message keyword field
+function getHighlightTerms() {
+  const terms = [];
+  // 1. message keyword input
+  const msgKw = (document.getElementById('fMsg') || {}).value || '';
+  if (msgKw.trim()) terms.push(msgKw.trim());
+  // 2. free-form query: extract bare words and quoted phrases
+  const q = (document.getElementById('qi') || {}).value || '';
+  if (q.trim()) {
+    // Extract quoted phrases first
+    const quoted = [];
+    const noQuotes = q.replace(/"([^"]+)"/g, (_, p) => { quoted.push(p); return ' '; });
+    quoted.forEach(p => { if(p.trim()) terms.push(p.trim()); });
+    // Then bare words that are not operators or field:value
+    noQuotes.split(/\s+/).forEach(w => {
+      w = w.replace(/[()]/g, '').trim();
+      if (w && !['AND','OR','NOT',''].includes(w.toUpperCase()) && !w.includes(':')) {
+        terms.push(w);
+      }
+    });
+  }
+  // Dedupe, sort longest first (so "misfired trigger" matches before "misfired")
+  return [...new Set(terms)].sort((a,b) => b.length - a.length);
+}
+
+function hlText(text, terms) {
+  if (!text || !terms.length) return esc(text || '');
+  // Single-pass highlighting: combine all terms into one regex alternation
+  // to avoid matching inside previously-inserted <mark> tags
+  var safe = esc(text);
+  var escapedTerms = terms.filter(Boolean).map(function(t) {
+    return esc(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  });
+  if (!escapedTerms.length) return safe;
+  var re = new RegExp('(' + escapedTerms.join('|') + ')', 'gi');
+  return safe.replace(re, '<mark class="hl">$1</mark>');
+}
+
+// ── Filter chips ───────────────────────────────────────────────
+function addChip(field, value) {
+  // Avoid duplicate chips
+  if (chips.some(c => c.field === field && c.value === value)) return;
+  chips.push({field, value});
+  syncChipToSidebar(field, value);
+  renderChips();
+  runSearch();
+}
+function removeChip(idx) {
+  var chip = chips[idx];
+  chips.splice(idx, 1);
+  unsyncChipFromSidebar(chip.field, chip.value);
+  renderChips();
+  runSearch();
+}
+
+// ── Chip ↔ Sidebar sync ────────────────────────────────────────
+// Maps chip field names to sidebar input element IDs
+var CHIP_SIDEBAR_MAP = {
+  'traceId': 'fTrace',  'spanId': 'fSpan',  'userId': 'fUser',
+  'siteId': 'fSite',  'tenantId': 'fTenant',  'logger': 'fLogger',
+  'message': 'fMsg',  'service': 'fService',  'level': 'fLevel'
+};
+// Fields that support comma-separated multi-values
+var MULTI_FIELDS = {'traceId':1, 'spanId':1, 'service':1};
+
+/** When a chip is added (by clicking a value in results), auto-fill the sidebar input */
+function syncChipToSidebar(field, value) {
+  var inputId = CHIP_SIDEBAR_MAP[field];
+  if (!inputId) return;
+  if (field === 'level') {
+    var sel = document.getElementById('fLevel');
+    if (sel) sel.value = value;
+    return;
+  }
+  var el = document.getElementById(inputId);
+  if (!el) return;
+  if (MULTI_FIELDS[field]) {
+    // Comma-separated: append if not already present
+    var existing = el.value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+    if (!existing.includes(value)) {
+      el.value = existing.length ? existing.join(', ') + ', ' + value : value;
+    }
+  } else {
+    // Scalar: replace
+    el.value = value;
+  }
+}
+
+/** When a chip is removed, clear (or un-append) the corresponding sidebar input */
+function unsyncChipFromSidebar(field, value) {
+  var inputId = CHIP_SIDEBAR_MAP[field];
+  if (!inputId) return;
+  if (field === 'level') {
+    // Only reset if no other level chip remains
+    if (!chips.some(function(c){return c.field === 'level';})) {
+      var sel = document.getElementById('fLevel');
+      if (sel) sel.selectedIndex = 0;
+    }
+    return;
+  }
+  var el = document.getElementById(inputId);
+  if (!el) return;
+  if (MULTI_FIELDS[field]) {
+    // Remove just this value from the comma list
+    var parts = el.value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+    parts = parts.filter(function(p){return p !== value;});
+    el.value = parts.join(', ');
+  } else {
+    // Scalar: clear only if it matches
+    if (el.value.trim() === value) el.value = '';
+  }
+}
+function renderChips() {
+  const list = document.getElementById('chipList');
+  const msg  = document.getElementById('noChipMsg');
+  const cnt  = document.getElementById('chipCount');
+  if (!chips.length) {
+    list.innerHTML = '';
+    msg.style.display = '';           // show placeholder text
+    cnt.textContent = '';
+    return;
+  }
+  msg.style.display = 'none';         // hide placeholder text
+  cnt.textContent = `(${chips.length})`;
+  // Render chips — use data-idx attribute; click handled by delegation below
+  list.innerHTML = chips.map((c,i) => `
+    <div class="chip">
+      <span style="font-weight:700;opacity:.7">${esc(c.field)}:</span>
+      <span class="chip-val" title="${esc(c.value)}">${esc(c.value)}</span>
+      <span class="chip-x" data-idx="${i}">✕</span>
+    </div>`).join('');
+}
+
+// Event delegation — handles chip removal even after innerHTML re-renders
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('chip-x')) {
+    const idx = parseInt(e.target.dataset.idx, 10);
+    if (!isNaN(idx)) removeChip(idx);
+  }
+});
+
+/**
+ * Sync sidebar inputs → chips.
+ * Called before every fresh search so Active Filters always reflects
+ * what's typed in the structured filter sidebar.
+ * Creates chips for non-empty sidebar values; removes chips whose
+ * sidebar input was cleared by the user.
+ */
+function syncSidebarToChips() {
+  // CHIP_SIDEBAR_MAP maps field → inputId.  Invert to iterate sidebar inputs.
+  // For each sidebar input, ensure matching chips exist (add missing, remove stale).
+
+  // 1. Multi-value fields — one chip per comma-separated value
+  ['traceId', 'spanId', 'service'].forEach(function(field) {
+    var inputId = CHIP_SIDEBAR_MAP[field];
+    var el = document.getElementById(inputId);
+    if (!el) return;
+    var vals = el.value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+    var existing = chips.filter(function(c){return c.field === field;}).map(function(c){return c.value;});
+    // Add chips for new sidebar values
+    vals.forEach(function(val) {
+      if (!existing.includes(val)) chips.push({field: field, value: val});
+    });
+    // Remove chips whose value was cleared from sidebar
+    chips = chips.filter(function(c) {
+      return c.field !== field || vals.includes(c.value);
+    });
+  });
+
+  // 2. Scalar fields — one chip per field
+  ['userId', 'siteId', 'tenantId', 'logger', 'message'].forEach(function(field) {
+    var inputId = CHIP_SIDEBAR_MAP[field];
+    var el = document.getElementById(inputId);
+    if (!el) return;
+    var val = el.value.trim();
+    var idx = chips.findIndex(function(c){return c.field === field;});
+    if (val) {
+      if (idx >= 0) {
+        chips[idx].value = val;   // update existing chip value
+      } else {
+        chips.push({field: field, value: val});
+      }
+    } else {
+      // Input cleared → remove chip
+      if (idx >= 0) chips.splice(idx, 1);
+    }
+  });
+
+  // 3. Level dropdown
+  var lvl = v('fLevel');
+  var lvlIdx = chips.findIndex(function(c){return c.field === 'level';});
+  if (lvl) {
+    if (lvlIdx >= 0) {
+      chips[lvlIdx].value = lvl;
+    } else {
+      chips.push({field: 'level', value: lvl});
+    }
+  } else {
+    if (lvlIdx >= 0) chips.splice(lvlIdx, 1);
+  }
+
+  renderChips();
+}
+
+// ── Build request ──────────────────────────────────────────────
+function getSvcs() { return [...document.querySelectorAll('.svc-cb:checked')].map(c => c.value); }
+function v(id) { const e = document.getElementById(id); return e && e.value.trim() || null; }
+function esc(s) { if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+/** JS-escape for embedding inside single-quoted JS string literals in HTML onclick attributes.
+ *  Escapes backslash, single quote, JS line terminators, and HTML-significant chars to prevent XSS. */
+function jsEsc(s) { if(!s)return''; return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function buildReq(extraSearchId) {
+  // Merge sidebar inputs + chips for each field
+  const chipFor = field => chips.filter(c => c.field === field).map(c => c.value);
+
+  // traceId: sidebar (comma-sep) + chips
+  const traceRaw  = (v('fTrace') || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const traceIds  = [...new Set([...traceRaw, ...chipFor('traceId')])];
+
+  const spanRaw   = (v('fSpan') || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const spanIds   = [...new Set([...spanRaw, ...chipFor('spanId')])];
+
+  // For scalar fields: sidebar value OR chip value
+  const scalarChip = field => { const c = chipFor(field); return c.length ? c[0] : null; };
+
+  // Services: checked checkboxes INTERSECTED with service filter (input + chips)
+  // If user typed "routing, print" in fService or has service chips, restrict to those.
+  const svcInput   = (v('fService') || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const svcChips   = chipFor('service');
+  const svcChecked = getSvcs();
+  const svcFilter  = [...new Set([...svcInput, ...svcChips])];
+  const services   = svcFilter.length
+    ? svcFilter.filter(s => svcChecked.includes(s))  // only search checked services that match filter
+    : svcChecked;                                      // no filter — use all checked boxes
+
+  // Warn if service filter + sidebar checkboxes produce no overlap
+  if (svcFilter.length && !services.length) {
+    console.warn('Service filter chips/input do not match any checked services — search will return empty.');
+  }
+
+  const limitVal = parseInt(document.getElementById('limitSel').value);
+  const scanVal  = parseInt(document.getElementById('scanSel').value);
+
+  // From/to values are always in server time:
+  // - Presets write server time via serverNow()
+  // - Manual input: user types server time (clock displays server time)
+  // No conversion needed — values pass through as-is.
+  let fromVal = v('fFrom');
+  let toVal   = v('fTo');
+
+  return {
+    services,
+    query:      v('qi'),
+    level:      v('fLevel')   || scalarChip('level'),
+    traceIds:   traceIds.length ? traceIds : undefined,
+    spanIds:    spanIds.length  ? spanIds  : undefined,
+    userId:     v('fUser')    || scalarChip('userId'),
+    siteId:     v('fSite')    || scalarChip('siteId'),
+    tenantId:   v('fTenant')  || scalarChip('tenantId'),
+    logger:     v('fLogger')  || scalarChip('logger'),
+    message:    v('fMsg')     || scalarChip('message'),
+    from:       fromVal,
+    to:         toVal,
+    sortOrder:  currentSort,
+    limit:      isNaN(limitVal) ? 500 : limitVal,    // 0 = "All" → backend handles as unlimited
+    maxScanLines: isNaN(scanVal) ? 100000 : scanVal,
+    searchId:       extraSearchId || undefined,
+    serviceOffsets: (extraSearchId && lastNextOffsets) ? lastNextOffsets : undefined
+  };
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────
+let lastSearchId   = null;  // cache key for "load more" — null means no more data
+let lastNextOffsets = null;  // per-service byte offsets for fallback if cache expires
+let lastHasMore    = false;  // whether more pages remain in cache
+
+async function runSearch() {
+  syncSidebarToChips();           // sidebar → chips so Active Filters stays in sync
+  lastSearchId = null;            // reset pagination on fresh search
+  lastNextOffsets = null;
+  lastHasMore = false;
+  if (currentMode === 'hist') {
+    await doHistSearch(null, false);
+  } else {
+    await doSearch(null, false);
+  }
+}
+
+async function loadMore() {
+  if (!lastSearchId) return;
+  if (currentMode === 'hist') {
+    await doHistSearch(lastSearchId, true);
+  } else {
+    await doSearch(lastSearchId, true);
+  }
+}
+
+function downloadLogs() {
+  if (!lastSearchId) { alert('Run a search first.'); return; }
+  var fmt = document.getElementById('dlFmt').value;
+  window.open(BASE + '/api/logs/export?searchId=' + encodeURIComponent(lastSearchId) + '&format=' + fmt, '_blank');
+}
+
+// ── HISTORICAL SEARCH ───────────────────────────────────────
+async function doHistSearch(searchId, isLoadMore) {
+  const svc = document.getElementById('histSvc').value;
+  const file = document.getElementById('histFile').value;
+  if (!svc || !file) { alert('Select a component and file first.'); return; }
+
+  if (currentAbort) { currentAbort.abort(); currentAbort = null; }
+  const abort = new AbortController();
+  currentAbort = abort;
+
+  document.getElementById('spin').style.display = 'block';
+  const t0 = Date.now();
+  try {
+    const req = buildReq(searchId);
+    delete req.services;
+
+    const url = BASE + '/api/logs/search/historical?serviceName=' +
+        encodeURIComponent(svc) + '&fileName=' + encodeURIComponent(file);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(req),
+      signal: abort.signal
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({error: 'HTTP ' + res.status}));
+      throw new Error(err.error || 'HTTP ' + res.status);
+    }
+    const data = await res.json();
+    if (abort.signal.aborted) return;
+    const entries = data.entries || data;
+
+    if (isLoadMore) {
+      lastEntries = [...lastEntries, ...entries];
+      VS.appendEntries(lastEntries);
+      updateCounts(lastEntries);
+    } else {
+      lastEntries = entries;
+      renderEntries(lastEntries);
+      updateCounts(lastEntries);
+    }
+
+    lastSearchId = data.searchId || null;
+    lastNextOffsets = data.nextOffsets || null;
+
+    const total     = data.totalMatched != null ? data.totalMatched : lastEntries.length;
+    const structured = data.filteredByStructured != null ? data.filteredByStructured : total;
+    const hasMore   = data.totalCached > 0 && lastEntries.length < data.totalCached;
+    lastHasMore = hasMore;
+    const limitVal  = parseInt(document.getElementById('limitSel').value);
+    const isAll     = isNaN(limitVal) || limitVal === 0;
+    const sortLbl   = currentSort === 'asc'
+      ? '<span style="color:var(--wrn);font-size:9px">\u2191 ASC</span>'
+      : '<span style="font-size:9px;color:var(--mut)">\u2193 DESC</span>';
+
+    let rcHtml;
+    if (structured > total) {
+      rcHtml = '<b>' + lastEntries.length + '</b> query matches from <b>' + structured + '</b> filtered ' + sortLbl;
+    } else if (hasMore) {
+      rcHtml = '<b>' + lastEntries.length + '</b> shown of <b style="color:var(--wrn)">' + total + '</b> matched ' + sortLbl;
+    } else {
+      rcHtml = '<b>' + lastEntries.length + '</b> ' + (isAll ? '' : 'of ' + total + ' ') + 'results ' + sortLbl;
+    }
+    rcHtml += ' <span style="color:var(--dim);font-size:10px">[' + esc(file) + ']</span>';
+    document.getElementById('rc').innerHTML = rcHtml;
+    document.getElementById('st').textContent = (Date.now()-t0) + 'ms';
+
+    const lmBtn = document.getElementById('loadMoreBtn');
+    if (lmBtn) lmBtn.style.display = hasMore ? 'block' : 'none';
+    document.getElementById('dlCtl').style.display = lastEntries.length > 0 ? '' : 'none';
+
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    VS.clear();
+    document.getElementById('results').innerHTML =
+      '<div class="empty"><div class="ei">\u26A0\uFE0F</div><div class="et">Search failed</div><div class="es">' + esc(e.message) + '</div></div>';
+    document.getElementById('dlCtl').style.display = 'none';
+  } finally {
+    document.getElementById('spin').style.display = 'none';
+  }
+}
+
+let currentAbort = null; // AbortController for cancelling stale searches
+
+async function doSearch(searchId, isLoadMore) {
+  // Cancel any in-flight search to prevent stale response overwriting
+  if (currentAbort) { currentAbort.abort(); currentAbort = null; }
+
+  const abort = new AbortController();
+  currentAbort = abort;
+
+  document.getElementById('spin').style.display = 'block';
+  const t0 = Date.now();
+  try {
+    const req = buildReq(searchId);
+
+    const res = await fetch(BASE + '/api/logs/search', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(req),
+      signal: abort.signal
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({error: 'HTTP ' + res.status}));
+      throw new Error(err.error || 'HTTP ' + res.status);
+    }
+    const data = await res.json();
+    if (abort.signal.aborted) return; // mode switch happened during res.json()
+
+    const entries  = data.entries || data;
+
+    if (isLoadMore) {
+      // Append to existing results
+      lastEntries = [...lastEntries, ...entries];
+      VS.appendEntries(lastEntries);
+      updateCounts(lastEntries);
+    } else {
+      lastEntries = entries;
+      renderEntries(lastEntries);
+      updateCounts(lastEntries);
+    }
+
+    // Store searchId and offsets for next Load More call
+    lastSearchId = data.searchId || null;
+    lastNextOffsets = data.nextOffsets || null;
+
+    const total     = data.totalMatched != null ? data.totalMatched : lastEntries.length;
+    const structured = data.filteredByStructured != null ? data.filteredByStructured : total;
+    const hasMore   = data.totalCached > 0 && lastEntries.length < data.totalCached;
+    lastHasMore = hasMore;
+    const limitVal  = parseInt(document.getElementById('limitSel').value);
+    const isAll     = isNaN(limitVal) || limitVal === 0;
+    const sortLbl   = currentSort === 'asc'
+      ? '<span style="color:var(--wrn);font-size:9px">↑ ASC</span>'
+      : '<span style="font-size:9px;color:var(--mut)">↓ DESC</span>';
+
+    let rcHtml;
+    if (structured > total) {
+      rcHtml = `<b>${lastEntries.length}</b> query matches from <b>${structured}</b> filtered ${sortLbl}`;
+    } else if (hasMore) {
+      rcHtml = `<b>${lastEntries.length}</b> shown of <b style="color:var(--wrn)">${total}</b> matched ${sortLbl}`;
+    } else {
+      rcHtml = `<b>${lastEntries.length}</b> ${isAll ? '' : 'of ' + total + ' '}results ${sortLbl}`;
+    }
+    document.getElementById('rc').innerHTML = rcHtml;
+    document.getElementById('st').textContent = `${Date.now()-t0}ms`;
+
+    // Show or hide the Load More button (based on remaining entries, not searchId)
+    const lmBtn = document.getElementById('loadMoreBtn');
+    if (lmBtn) {
+      lmBtn.style.display = hasMore ? 'block' : 'none';
+    }
+    // Show download control when results exist
+    document.getElementById('dlCtl').style.display = lastEntries.length > 0 ? '' : 'none';
+
+  } catch(e) {
+    if (e.name === 'AbortError') return; // superseded by a newer search
+    VS.clear();
+    document.getElementById('results').innerHTML =
+      `<div class="empty"><div class="ei">⚠️</div><div class="et">Search failed</div><div class="es">${esc(e.message)}</div></div>`;
+    document.getElementById('dlCtl').style.display = 'none';
+  } finally {
+    document.getElementById('spin').style.display = 'none';
+  }
+}
+
+// ── RENDER (delegates to virtual scroll) ──────────────────────
+function renderEntries(entries) {
+  const c = document.getElementById('results');
+  if (!entries || !entries.length) {
+    VS.clear();
+    c.innerHTML = `<div class="empty"><div class="ei">\uD83D\uDCED</div><div class="et">No entries found</div>
+      <div class="es">Try adjusting filters, widening the time range,<br/>or increasing the Limit</div></div>`;
+    document.getElementById('dlCtl').style.display = 'none';
+    return;
+  }
+  const hasTrace = entries.some(e => e.traceId && e.traceId.trim());
+  VS.setNotice(!hasTrace);
+  VS.setEntries(entries);
+}
+
+function entryHtml(e, cols, hlTerms, idx) {
+  const lc  = e.level ? e.level.charAt(0) : 'I';
+  const col = SVC_COL[e.service] || '#1a6fa3';
+  const ts  = e.timestamp ? e.timestamp.replace('T',' ').substring(0,19) : '—';
+
+  // ── Inline row fields (controlled by column visibility) ──────
+  const fields = [];
+  if (cols.service  && e.service) fields.push(`<span class="ftag svc click" style="background:${col}" onclick="event.stopPropagation();addChip('service','${jsEsc(e.service)}')">${esc(e.service)}</span>`);
+  if (cols.traceId)  fields.push(e.traceId
+    ? `<span class="ftag trace click" onclick="event.stopPropagation();addChip('traceId','${jsEsc(e.traceId)}')" title="Click to filter by this traceId">T: ${esc(e.traceId)}</span>`
+    : `<span class="ftag notrace">no traceId</span>`);
+  if (cols.spanId && e.spanId)    fields.push(`<span class="ftag click" onclick="event.stopPropagation();addChip('spanId','${jsEsc(e.spanId)}')" title="Click to filter by this spanId">S: ${esc(e.spanId)}</span>`);
+  if (cols.userId && e.userId)    fields.push(`<span class="ftag click" onclick="event.stopPropagation();addChip('userId','${jsEsc(e.userId)}')" title="Click to filter by userId">👤 ${esc(e.userId)}</span>`);
+  if (cols.siteId && e.siteId)    fields.push(`<span class="ftag click" onclick="event.stopPropagation();addChip('siteId','${jsEsc(e.siteId)}')" title="Click to filter by siteId">📍 ${esc(e.siteId)}</span>`);
+  if (cols.tenantId && e.tenantId) fields.push(`<span class="ftag click" onclick="event.stopPropagation();addChip('tenantId','${jsEsc(e.tenantId)}')" title="Click to filter by tenantId">🏢 ${esc(e.tenantId)}</span>`);
+  if (cols.logger && e.logger)    fields.push(`<span class="ftag click" onclick="event.stopPropagation();addChip('logger','${jsEsc(shortL(e.logger))}')" title="${esc(e.logger)}">${esc(shortL(e.logger))}</span>`);
+  if (cols.thread && e.thread)    fields.push(`<span class="ftag">[${esc(e.thread)}]</span>`);
+
+  // ── Detail section ─────────────────────────────────────────
+  // Full message (may differ from first-line message if multiline)
+  const fullMsg = e.message || '';
+  const stk     = e.stackTrace
+    ? `<div class="stk">${esc(e.stackTrace)}</div>`
+    : '';
+  // Use hlTerms passed in for highlighting
+
+  const detGrid = [
+    e.service   && drv('Service',  e.service,   'service'),
+    e.level     && drv('Level',    e.level,     'level'),
+    e.logger    && drv('Logger',   e.logger,    'logger'),
+    e.thread    && drv('Thread',   e.thread,    null),
+    drv('TraceId', e.traceId, 'traceId'),
+    drv('SpanId',  e.spanId,  'spanId'),
+    drv('UserId',  e.userId,  'userId'),
+    drv('SiteId',  e.siteId,  'siteId'),
+    drv('Tenant',  e.tenantId,'tenantId'),
+  ].filter(Boolean).join('');
+
+  const exp = (typeof idx === 'number' && VS.expandedSet.has(idx)) ? ' expanded' : '';
+  const arrow = (typeof idx === 'number' && VS.expandedSet.has(idx)) ? '&#9660;' : '&#9654;';
+  return `<div class="le ${lc}${exp}" data-vidx="${idx}">
+    <div class="le-row">
+      <button type="button" class="le-toggle" onclick="VS.toggle(${idx})" title="Expand / Collapse">${arrow}</button>
+      ${cols.timestamp ? `<div class="le-ts">${esc(ts)}</div>` : ''}
+      ${cols.level     ? `<div class="le-lv">${esc(e.level||'?')}</div>` : ''}
+      ${cols.message   ? `<div class="le-msg">${hlText(fullMsg, hlTerms)}</div>` : ''}
+    </div>
+    ${fields.length ? `<div class="le-fields">${fields.join('')}</div>` : ''}
+    <div class="le-detail">
+      ${stk}
+      <div class="det-grid">${detGrid}</div>
+    </div>
+  </div>`;
+}
+
+/** Detail row with optional click-to-filter */
+function drv(label, val, chipField) {
+  if (!val) return `<div class="det-row"><span class="det-k">${label}</span><span class="det-v notset">—</span></div>`;
+  const clickAttr = chipField ? `class="det-v click" onclick="addChip('${chipField}','${jsEsc(val)}')" title="Click to filter"` : `class="det-v"`;
+  return `<div class="det-row"><span class="det-k">${label}</span><span ${clickAttr}>${esc(val)}</span></div>`;
+}
+
+function shortL(l) { return l ? l.split('.').pop() : ''; }
+
+function updateCounts(entries) {
+  const counts = {};
+  for (let i = 0; i < entries.length; i++) {
+    const s = entries[i].service;
+    if (s) counts[s] = (counts[s] || 0) + 1;
+  }
+  document.querySelectorAll('.svc-cb').forEach(cb => {
+    const el = document.getElementById('cn-' + cb.value);
+    if (el) el.textContent = counts[cb.value] || '\u2014';
+  });
+}
+
+function sq(q) { document.getElementById('qi').value = q; runSearch(); }
+
+function clearAll() {
+  // Reset all state cleanly
+  chips = [];
+  activePreset = null;   // must reset before renderChips
+  // Remove .on from ALL preset buttons
+  document.querySelectorAll('.tp').forEach(b => b.classList.remove('on'));
+  renderChips();
+  ['qi','fTrace','fSpan','fUser','fSite','fTenant','fLogger','fMsg','fService','fFrom','fTo']
+    .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  const lvl = document.getElementById('fLevel');
+  if (lvl) lvl.selectedIndex = 0;   // reset select to "All levels"
+  const scanSel = document.getElementById('scanSel');
+  if (scanSel) scanSel.selectedIndex = 0;   // reset scan depth to 100K
+  VS.clear();
+  lastEntries = [];
+  lastSearchId = null;
+  lastNextOffsets = null;
+  lastHasMore = false;
+  document.getElementById('results').innerHTML =
+    `<div class="empty"><div class="ei">\u27E8/\u27E9</div><div class="et">Cleared</div><div class="es">Apply filters and click Search</div></div>`;
+  document.getElementById('rc').textContent = 'No results yet';
+  document.getElementById('st').textContent = '';
+  const lmBtn = document.getElementById('loadMoreBtn');
+  if (lmBtn) lmBtn.style.display = 'none';
+  document.getElementById('dlCtl').style.display = 'none';
+}
+
+// ── MODE SWITCHING (Live / Historical) ──────────────────────
+const FILTER_IDS = ['qi','fLevel','fTrace','fSpan','fUser','fSite','fTenant','fLogger','fMsg','fService','fFrom','fTo'];
+
+function switchMode(mode) {
+  if (mode === currentMode) return;
+  // Abort any in-flight fetch from the current mode to prevent stale responses
+  if (currentAbort) { currentAbort.abort(); currentAbort = null; }
+  saveCurrentModeState();
+  currentMode = mode;
+  restoreModeState(mode);
+  // Toggle active class
+  document.getElementById('modeLive').classList.toggle('mode-active', mode==='live');
+  document.getElementById('modeHist').classList.toggle('mode-active', mode==='hist');
+  // Show/hide hist bar
+  document.getElementById('histBar').style.display = mode === 'hist' ? '' : 'none';
+  // Dim the sidebar Services section in historical mode
+  document.getElementById('secServices').style.opacity = mode === 'hist' ? '0.4' : '1';
+  document.getElementById('secServices').style.pointerEvents = mode === 'hist' ? 'none' : '';
+}
+
+function saveCurrentModeState() {
+  const s = modeState[currentMode];
+  s.entries = lastEntries.slice();
+  s.searchId = lastSearchId;
+  s.nextOffsets = lastNextOffsets;
+  s.hasMore = lastHasMore;
+  s.chips = chips.slice();
+  s.sort = currentSort;
+  s.preset = activePreset;
+  s.filterValues = {};
+  FILTER_IDS.forEach(id => { const e = document.getElementById(id); if(e) s.filterValues[id] = e.value; });
+  if (currentMode === 'hist') {
+    s.selectedSvc = document.getElementById('histSvc').value;
+    s.selectedFile = document.getElementById('histFile').value;
+  }
+}
+
+function restoreModeState(mode) {
+  const s = modeState[mode];
+  lastEntries = s.entries;
+  lastSearchId = s.searchId;
+  lastNextOffsets = s.nextOffsets;
+  lastHasMore = s.hasMore || false;
+  chips = s.chips.slice();
+  currentSort = s.sort;
+  activePreset = s.preset;
+  // Restore filter inputs
+  FILTER_IDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.value = s.filterValues[id] || '';
+  });
+  // Update sort button
+  const btn = document.getElementById('sortBtn');
+  btn.textContent = currentSort === 'asc' ? '\u2191 ASC' : '\u2193 DESC';
+  btn.style.color = currentSort === 'asc' ? 'var(--wrn)' : 'var(--ac)';
+  // Restore preset highlight
+  document.querySelectorAll('.tp').forEach(b => b.classList.remove('on'));
+  if (activePreset) {
+    const pb = document.getElementById('tp' + activePreset);
+    if (pb) pb.classList.add('on');
+  }
+  // Restore chips
+  renderChips();
+  // Restore results
+  if (lastEntries.length > 0) {
+    renderEntries(lastEntries);
+    updateCounts(lastEntries);
+    document.getElementById('dlCtl').style.display = '';
+  } else {
+    VS.clear();
+    document.getElementById('results').innerHTML = mode === 'hist'
+      ? '<div class="empty"><div class="ei">\uD83D\uDCC1</div><div class="et">Historical Logs</div><div class="es">Select a component and file above, then click Search</div></div>'
+      : '<div class="empty"><div class="ei">\u27E8/\u27E9</div><div class="et">LogLens</div><div class="es">Use the filters on the left or the query bar above</div></div>';
+    document.getElementById('rc').textContent = 'No results yet';
+    document.getElementById('st').textContent = '';
+    document.getElementById('dlCtl').style.display = 'none';
+  }
+  const lmBtn = document.getElementById('loadMoreBtn');
+  if (lmBtn) lmBtn.style.display = lastHasMore ? 'block' : 'none';
+  // Restore hist controls — repopulate file dropdown via API then restore selection
+  if (mode === 'hist' && s.selectedSvc) {
+    document.getElementById('histSvc').value = s.selectedSvc;
+    // Repopulate file dropdown, then restore selected file
+    onHistSvcChange().then(() => {
+      if (s.selectedFile) {
+        document.getElementById('histFile').value = s.selectedFile;
+      }
+    });
+  } else if (mode === 'hist') {
+    document.getElementById('histSvc').value = '';
+    document.getElementById('histFile').innerHTML = '<option value="">Select file\u2026</option>';
+  }
+}
+
+// ── HISTORICAL FILE SELECTION ───────────────────────────────
+function populateHistSvcs() {
+  const sel = document.getElementById('histSvc');
+  sel.innerHTML = '<option value="">Select component\u2026</option>';
+  ALL_SVCS.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+}
+
+async function onHistSvcChange() {
+  const svc = document.getElementById('histSvc').value;
+  const fileSel = document.getElementById('histFile');
+  const info = document.getElementById('histFileInfo');
+  fileSel.innerHTML = '<option value="">Select file\u2026</option>';
+  info.textContent = '';
+  if (!svc) return;
+  try {
+    const res = await fetch(BASE + '/api/logs/services/' + encodeURIComponent(svc) + '/files');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const files = await res.json();
+    if (!files.length) {
+      fileSel.innerHTML = '<option value="">No archived files</option>';
+      return;
+    }
+    files.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.name;
+      opt.textContent = f.name + ' (' + f.sizeKb + ' KB)';
+      fileSel.appendChild(opt);
+    });
+    info.textContent = files.length + ' file(s)';
+  } catch(e) {
+    fileSel.innerHTML = '<option value="">Error loading files</option>';
+  }
+}
+
+function onHistFileChange() {
+  lastSearchId = null;
+  lastNextOffsets = null;
+  lastHasMore = false;
+  lastEntries = [];
+  VS.clear();
+  document.getElementById('results').innerHTML =
+    '<div class="empty"><div class="ei">\uD83D\uDCC1</div><div class="et">Historical Logs</div><div class="es">File selected \u2014 click Search to load</div></div>';
+  const lmBtn = document.getElementById('loadMoreBtn');
+  if (lmBtn) lmBtn.style.display = 'none';
+  document.getElementById('dlCtl').style.display = 'none';
+  document.getElementById('rc').textContent = 'No results yet';
+}
+
+// ── TOOL BUTTONS ────────────────────────────────────────────
+function toolShow(text) {
+  const el = document.getElementById('toolOutput');
+  el.textContent = text;
+  el.style.display = 'block';
+}
+async function toolClearCache() {
+  try {
+    const res = await fetch(BASE + '/api/logs/cache/clear', { method: 'POST' });
+    const data = await res.json();
+    toolShow('Cache cleared: ' + JSON.stringify(data));
+    lastSearchId = null;
+    lastNextOffsets = null;
+    lastHasMore = false;
+    lastEntries = [];
+    VS.clear();
+    document.getElementById('rc').innerHTML = '';
+    const lmBtn = document.getElementById('loadMoreBtn');
+    if (lmBtn) lmBtn.style.display = 'none';
+    document.getElementById('dlCtl').style.display = 'none';
+  } catch(e) { toolShow('Error: ' + e.message); }
+}
+async function toolHealth() {
+  try {
+    const res = await fetch(BASE + '/api/logs/health');
+    const data = await res.json();
+    toolShow(JSON.stringify(data, null, 2));
+  } catch(e) { toolShow('Error: ' + e.message); }
+}
+async function toolServices() {
+  try {
+    const res = await fetch(BASE + '/api/logs/services');
+    const data = await res.json();
+    const lines = data.map(s =>
+      s.name + ': ' + (s.exists ? (s.sizeKb/1024).toFixed(1) + ' MB' : 'OFFLINE') +
+      (s.exists ? ' | modified: ' + s.lastModified : '')
+    );
+    toolShow(lines.join('\n'));
+  } catch(e) { toolShow('Error: ' + e.message); }
+}
+
+// ── Sidebar resize + collapse ─────────────────────────────────
+const SB = {
+  MIN_W: 180,
+  MAX_W: 450,
+  DEFAULT_W: 256,
+  dragging: false,
+  startX: 0,
+  startW: 0,
+  collapsed: false,
+  lastW: 256,
+
+  init() {
+    const aside   = document.querySelector('aside');
+    const drag    = document.getElementById('sbDrag');
+    const toggle  = document.getElementById('sbToggle');
+
+    drag.addEventListener('mousedown', (e) => {
+      if (SB.collapsed) return;
+      if (e.target === toggle || toggle.contains(e.target)) return;
+      e.preventDefault();
+      SB.dragging = true;
+      SB.startX   = e.clientX;
+      SB.startW   = aside.offsetWidth;
+      aside.classList.add('resizing');
+      drag.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!SB.dragging) return;
+      const dx = e.clientX - SB.startX;
+      let w = SB.startW + dx;
+      w = Math.max(SB.MIN_W, Math.min(Math.min(SB.MAX_W, window.innerWidth * 0.7), w));
+      aside.style.width = w + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!SB.dragging) return;
+      SB.dragging = false;
+      aside.classList.remove('resizing');
+      drag.classList.remove('active');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      SB.lastW = aside.offsetWidth;
+      // Re-measure VS row heights after sidebar width change
+      if (VS.entries && VS.entries.length > 0) {
+        VS.measureDefaultRowHeight();
+        VS.rebuildPositions();
+        VS.forceRender = true;
+        VS.render();
+      }
+    });
+
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      SB.toggle();
+    });
+  },
+
+  toggle() {
+    const aside  = document.querySelector('aside');
+    const toggle = document.getElementById('sbToggle');
+    const drag   = document.getElementById('sbDrag');
+    const hdrBtn = document.getElementById('sbHdrToggle');
+
+    if (SB.collapsed) {
+      // Expand
+      aside.classList.remove('collapsed');
+      aside.style.width = SB.lastW + 'px';
+      toggle.innerHTML = '&#9664;'; // ◀
+      toggle.title = 'Collapse sidebar';
+      drag.classList.remove('collapsed-handle');
+      hdrBtn.title = 'Collapse sidebar (Ctrl+B)';
+      SB.collapsed = false;
+    } else {
+      // Collapse
+      SB.lastW = aside.offsetWidth;
+      aside.classList.add('collapsed');
+      aside.style.width = '0px';
+      toggle.innerHTML = '&#9654;'; // ▶
+      toggle.title = 'Expand sidebar';
+      drag.classList.add('collapsed-handle');
+      hdrBtn.title = 'Expand sidebar (Ctrl+B)';
+      SB.collapsed = true;
+    }
+    // Re-measure VS after sidebar transition completes
+    setTimeout(() => {
+      if (VS.entries && VS.entries.length > 0) {
+        VS.measureDefaultRowHeight();
+        VS.rebuildPositions();
+        VS.forceRender = true;
+        VS.render();
+      }
+    }, 220);
+  }
+};
+
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); SB.toggle(); }
+});
+
+window.addEventListener('load', async () => {
+  VS.init();
+  SB.init();
+  await syncServerTime();   // sync server clock FIRST so presets work immediately
+  loadSvcs();
+  populateHistSvcs();
+});
+</script>
+</body>
+</html>

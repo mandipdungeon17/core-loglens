@@ -1,0 +1,67 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /loglens
+
+spring:
+  application:
+    name: loglens
+  thymeleaf:
+    cache: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+loglens:
+  tail-lines: 500
+  max-scan-lines: 100000
+  max-scan-lines-limit: 10000000
+  scan-pool-size: 0   # 0 = auto (resource-aware: ~60% of CPU cores), or explicit thread count
+  show-metrics: true  # show live resource metrics (CPU, memory, GC) in the header bar
+
+  # ── Add one entry per microservice ──────────────────────────────────────────
+  # name     : display name shown in the UI sidebar
+  # log-file : absolute path to log file on this VM
+  #            Supports env variable override — if env var is not set, default path is used.
+  # color    : hex color for the service badge
+  #
+  # ── Environment variable override ───────────────────────────────────────────
+  # Syntax: ${ENV_VAR_NAME:/default/path/if/not/set}
+  #
+  # Linux / Git Bash (use forward slashes on Windows):
+  #   LOGLENS_ROUTING_LOG=/opt/logs/routing.log \
+  #   LOGLENS_PRINT_LOG=/opt/logs/print.log \
+  #   LOGLENS_MOMENTUMCONNECT_LOG=/opt/logs/mc.log \
+  #   java -jar build/libs/loglens-2.0.0-SNAPSHOT-exec.jar
+  #
+  # CMD (Windows):
+  #   set LOGLENS_ROUTING_LOG=C:\path\to\routing-console.log
+  #   set LOGLENS_PRINT_LOG=C:\path\to\print-console.log
+  #   set LOGLENS_MOMENTUMCONNECT_LOG=C:\path\to\momentumconnect-console.log
+  #   gradlew bootRun
+  #
+  # PowerShell (Windows):
+  #   $env:LOGLENS_ROUTING_LOG="C:\path\to\routing-console.log"
+  #   $env:LOGLENS_PRINT_LOG="C:\path\to\print-console.log"
+  #   $env:LOGLENS_MOMENTUMCONNECT_LOG="C:\path\to\momentumconnect-console.log"
+  #   ./gradlew bootRun
+  #
+  # If the env variable is NOT set, the default path after the colon is used automatically.
+  # ────────────────────────────────────────────────────────────────────────────
+  services:
+    - name: routing
+      log-file: ${LOGLENS_ROUTING_LOG:/home/azadmin/csapps/routing/logs/routing-console.log}
+      color: "#1a6fa3"
+
+    - name: print
+      log-file: ${LOGLENS_PRINT_LOG:/home/azadmin/csapps/print/logs/print-console.log}
+      color: "#6d28d9"
+
+    - name: momentumconnect
+      log-file: ${LOGLENS_MOMENTUMCONNECT_LOG:/home/azadmin/csapps/momentumconnect/logs/momentumconnect-console.log}
+      color: "#b45309"
+
+logging:
+  level:
+    com.honeywell.loglens: DEBUG
